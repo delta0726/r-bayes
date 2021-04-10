@@ -1,15 +1,15 @@
 # ***********************************************************************************************
 # Library   : tidybayes
-# Title     : tidybayesパッケージで推定結果の整然化
+# Title     : StanのMCMC結果&パラメータ結果を可視化する
 # Created by: Owner
 # Created on: 2021/04/06
-# URL       : https://ytake2.github.io/takeblog/2018/12/03/tidybayes/
+# URL       : https://knknkn.hatenablog.com/entry/2019/05/19/182053
 # ***********************************************************************************************
 
 
 # ＜ポイント＞
-# - Rstanやbrmsなどでベイズ推定の推定結果を整然データ化して、dplyrの関数群やggplotで扱いやすくする
-#   --- tidybayes: Bayesian analysis + tidy data + geoms
+# - tidybayesは生前データとしてサンプリング結果を出してくれるパッケージ
+# - MCMC自体に対してサクっと見る関数は入ってない
 
 
 # ＜対応パッケージ＞
