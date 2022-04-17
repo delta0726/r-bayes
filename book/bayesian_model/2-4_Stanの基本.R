@@ -1,18 +1,21 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 2-4 stanの基本
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/2/10
-# Page      : P111 - P124
-#***************************************************************************************
+# ***********************************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 2 RとStanによるデータ分析
+# Theme   : 4 stanの基本
+# Date    : 2022/4/18
+# Page    : P111 - P124
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# ***********************************************************************************************
+
+
+# ＜概要＞
+# - Stanの基本的な事項とRとの連携した分析方法について学ぶ
+#   --- StanはMCMCを実行する目的でのみ使用
 
 
 # ＜用語整理＞
-# - ｢サンプル｣と｢MCMCサンプル｣の違いは明確にしておく
-# - ｢サンプル｣とは、母集団から標本抽出することを指す
-# - ｢MCMCサンプル｣とは、MCMCを用いて得られた乱数を指す
-#   --- MCMCを使うことで、事後分布に従う乱数を得ることができる
+# - サンプル    ：母集団から標本抽出することを指す
+# - MCMCサンプル：MCMCを用いて得られた乱数を指す（MCMCを使うことで事後分布に従う乱数を得ることができる）
 
 
 # ＜stanの構成＞
@@ -40,6 +43,12 @@
 
 # 0 準備 ---------------------------------------------------------------------
 
+# ＜ポイント＞
+# - Stanは内部でC++が使われているのでコンパイルが必要となる
+#   --- rstan_options(auto_write = TRUE)を実行するとコンパイルしたRDSファイルが作成される
+#   --- 2回目以降はコンパイル不要となり実行が速くなる
+
+
 # ライブラリ
 library(tidyverse)
 library(rstan)
@@ -50,12 +59,13 @@ library(tidybayes)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
+
 # データ準備
 # ---ビールの売上高
-file_beer_sales_1 <- read_csv("book/bayesian_model/csv/2-4-1-beer-sales-1.csv")
+file_beer_sales_1 <- read_csv("csv/2-4-1-beer-sales-1.csv")
 
 # データの確認
-file_beer_sales_1 %>% as_tibble()
+file_beer_sales_1 %>% print()
 
 # ヒストグラム
 file_beer_sales_1 %>%
@@ -85,6 +95,11 @@ data_list_2 <- file_beer_sales_1 %>% compose_data()
 
 # 2 MCMCによるサンプリングの実施 --------------------------------------------------
 
+# ＜ポイント＞
+# - MCMCを実行するにはrstan::stan()を用いる
+# - シートを固定することで乱数を再現可能にすることができる
+
+
 # 乱数の生成
 # --- seed  ： 乱数シード（固定しておくのがセオリー）
 # --- chains： チェーン数
@@ -92,7 +107,7 @@ data_list_2 <- file_beer_sales_1 %>% compose_data()
 # --- warmup： バーンイン期間
 # --- thin  ： 間引き数(1なら間引き無し)
 mcmc_result <-
-  stan(file = "book/bayesian_model/stan/2-4-1-calc-mean-variance.stan",
+  stan(file = "stan/2-4-1-calc-mean-variance.stan",
        data = data_list,
        seed = 1,
        chains = 4,
@@ -100,15 +115,16 @@ mcmc_result <-
        warmup = 1000,
        thin = 1)
 
-# 結果の表示
+# データ確認
 mcmc_result %>% print()
-mcmc_result %>% names()
 mcmc_result %>% glimpse()
+mcmc_result %>% listviewer::reactjson()
 
 # 結果の表示
 # --- 分位点を指定して出力
-# --- probs引数で出力値を指定（中央値と95%信用区間）
+# --- probs引数で出力値を指定（中央値と95%ベイズ信用区間）
 mcmc_result %>% print(probs = c(0.025, 0.5, 0.975))
+
 
 
 # 3 収束の確認 -------------------------------------------------------------------
@@ -156,7 +172,7 @@ mcmc_result %>% traceplot(inc_warmup = T)
 # 乱数の生成
 # --- ファイルのみ変更
 mcmc_result_vec <-
-  stan(file = "book/bayesian_model/stan/2-4-2-calc-mean-variance-vec.stan",
+  stan(file = "stan/2-4-2-calc-mean-variance-vec.stan",
        data = data_list,
        seed = 1,
        chains = 4,
