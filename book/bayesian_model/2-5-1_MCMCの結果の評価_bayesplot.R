@@ -1,16 +1,16 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 2-5-1 MCMCの結果の評価（bayesplot）
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/4/12
-# Page      : P125 - P134
-#***************************************************************************************
+# **********************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 2 RとStanによるデータ分析
+# Theme   : 5-1 MCMCの結果の評価（bayesplot）
+# Date    : 2022/4/18
+# Page    : P125 - P134
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# **********************************************************************************
 
 
 # ＜テーマ＞
-# - MCMCサンプルの取扱いと事後チェック
-# - {bayesplot}を用いた描画方法
+# - MCMC実行後の処理プロセスを学ぶ
+#   --- MCMCサンプルの取扱いと事後チェック{bayesplot}を用いた描画方法
 
 
 # ＜目次＞
@@ -39,11 +39,11 @@ options(mc.cores = parallel::detectCores())
 # データ準備
 # --- ビールの売上高
 # --- 小動物の個数
-file_beer_sales_1 <- read_csv("book/bayesian_model/csv/2-4-1-beer-sales-1.csv")
-animal_num        <- read_csv("book/bayesian_model/csv/2-5-1-animal-num.csv")
+file_beer_sales_1 <- read_csv("csv/2-4-1-beer-sales-1.csv")
+animal_num        <- read_csv("csv/2-5-1-animal-num.csv")
 
 # データ確認
-file_beer_sales_1 %>% as_tibble()
+file_beer_sales_1 %>% print()
 file_beer_sales_1$sales %>% hist()
 
 
@@ -55,12 +55,14 @@ file_beer_sales_1$sales %>% hist()
 
 
 # データ準備
-data_list <- list(sales = file_beer_sales_1$sales, N = nrow(file_beer_sales_1))
+data_list <-
+  list(sales = file_beer_sales_1$sales,
+       N = nrow(file_beer_sales_1))
 
 
 # MCMCの実行
 mcmc_result <-
-  stan(file = "book/bayesian_model/stan/2-4-1-calc-mean-variance.stan",
+  stan(file = "stan/2-4-1-calc-mean-variance.stan",
        data = data_list,
        seed = 1,
        chains = 4,
@@ -68,9 +70,12 @@ mcmc_result <-
        warmup = 1000,
        thin = 1)
 
+# クラス確認
+# --- rstanfitオブジェクト
+mcmc_result %>% class()
+
 # データ確認
 mcmc_result %>% print()
-mcmc_result %>% class()
 mcmc_result %>% glimpse()
 
 
@@ -85,11 +90,9 @@ mcmc_result %>% glimpse()
 # --- MCMCサンプルの抽出
 mcmc_sample <- mcmc_result %>% rstan::extract(permuted = FALSE)
 
-# データ構造
-mcmc_sample %>% glimpse()
-
-# クラス
+# データ確認
 mcmc_sample %>% class()
+mcmc_sample %>% head()
 
 # 次元数
 # --- chains    ：Chain
@@ -98,12 +101,10 @@ mcmc_sample %>% dim()
 mcmc_sample %>% dimnames()
 
 
-# MCMCサンプル
+# データ抽出
 # --- パラメタmuの1回目のチェーンのMCMCサンプルのburn-in後の1つめのサンプル
-mcmc_sample[1, "chain:1", "mu"]
-
-# MCMCサンプル
 # --- パラメタmuの1回目のチェーンの全サンプル
+mcmc_sample[1, "chain:1", "mu"]
 mcmc_sample[, "chain:1", "mu"]
 
 # MCMCサンプルの個数
@@ -128,7 +129,7 @@ mcmc_sample[ , , "mu"] %>% class()
 
 
 # MCMCサンプルの抽出
-# --- 全チェーン(4000個)
+# --- 全チェーン(4000個)のmu
 mu_mcmc_vec <- mcmc_sample[ , ,"mu"] %>% as.vector()
 
 # 代表値の計算
@@ -142,7 +143,7 @@ mu_mcmc_vec %>% quantile(probs = c(0.025, 0.975))
 
 # ＜参考＞
 # 上記の計算結果の確認
-# --- stanfitオブジェクトの出力結果
+# --- stanfitオブジェクトの出力結果と一致
 mcmc_result %>% print(probs = c(0.025, 0.5, 0.975))
 
 
@@ -168,7 +169,8 @@ mcmc_sample[,,"mu"] %>%
 # 5 事後分布のプロット ----------------------------------------------------------------
 
 # ＜ポイント＞
-# - MCMCで作成したサンプルから事後分布を確認する
+# - MCMCで作成したサンプルからmuの事後分布を確認する
+#   --- MCMCサンプルをカーネル密度推定して作成した密度プロットと一致
 
 
 # MCMCサンプルの抽出
@@ -184,18 +186,15 @@ tibble(mu_mcmc_sample = mu_mcmc_vec) %>%
 
 
 # プロット作成
-# --- 事後分布を密度プロットで表現
-# --- {bayesplot}の関数を用いる
-# --- ヒストグラム / カーネル密度推定
+# --- {bayesplot}の関数を用いて事後分布のヒストグラムと密度プロットを作成
 mcmc_sample %>% mcmc_hist(pars = c("mu", "sigma"))
 mcmc_sample %>% mcmc_dens(pars = c("mu", "sigma"))
-
 
 
 # 6 その他のプロット -----------------------------------------------------------------
 
 # ＜ポイント＞
-# - {bayesplot}は多数のプロットのうち代表的なプロットのみを紹介
+# - {bayesplot}は多数のプロットのうち代表的なプロットのみを確認する
 
 # ＜参考＞
 # bayesplot
@@ -214,7 +213,7 @@ mcmc_sample %>% mcmc_combo(pars = c("mu", "sigma"))
 
 # ＜ポイント＞
 # - 複数のパラメータの信頼区間を比較する
-#   --- 平均同士ではなく平均/標準偏差を比較している点に注意
+#   --- 平均同士ではなく平均(mu)/標準偏差(sigma)を比較している点に注意
 
 
 # 事後分布の範囲を比較
@@ -244,6 +243,3 @@ mcmc_sample %>% mcmc_dens_overlay(pars = c("mu", "sigma"))
 
 # (参考)チェーン別のヒストグラム
 mcmc_sample %>% mcmc_hist_by_chain(pars = c("mu", "sigma"))
-
-
-
