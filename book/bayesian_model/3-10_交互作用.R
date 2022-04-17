@@ -108,7 +108,7 @@ newdata_1 %>% print()
 round(fitted(interaction_brms_1, newdata_1), 2)
 
 # プロット作成
-# --- 事後分布の図示
+# --- 事後分布とトレースプロット
 interaction_brms_1 %>% plot()
 
 
@@ -138,7 +138,7 @@ interaction_brms_2 <-
 interaction_brms_2 %>% print()
 
 # プロット作成
-# --- 事後分布の図示
+# --- 事後分布とトレースプロット
 interaction_brms_2 %>% plot()
 
 
@@ -189,7 +189,7 @@ interaction_brms_3 <-
 interaction_brms_3 %>% print()
 
 # プロット作成
-# --- 事後分布の図示
+# --- 事後分布とトレースプロット
 interaction_brms_3 %>% plot()
 
 

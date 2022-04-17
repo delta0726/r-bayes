@@ -45,17 +45,19 @@
 
 
 # ＜引数＞
-#
+# - 省略
 
 
 # ＜詳細＞
-#
+# - エンジンは{brms}を用いる
+# - 分類と回帰の両方に対応
 
 
 # ＜目次＞
 # 0 準備
-# 1 データ変換
-# 2 エンジン
+# 1 アイテム確認
+# 2 モデル定義
+
 
 # 0 準備 -------------------------------------------------------------------------
 
@@ -65,20 +67,30 @@ library(tidymodels)
 library(bayesian)
 
 
-# データ作成
-df <- data.frame(
-  plot = factor(paste0("p", rep(1:8, times = 2))),
-  site = factor(paste0("s", rep(1:4, each = 2, times = 2)))
-)
+# 1 アイテム確認 -----------------------------------------------------------------
 
-# データ確認
-df %>% print()
-df %>% map(table)
+# モデル定義
+bayesian()
 
+# モデル情報
+show_model_info("bayesian")
 
-# 2 エンジン ------------------------------------------------------------------
-
-# エンジン定義
+# エンジン
+# --- {brams}
 bayesian() %>%
   set_engine("brms") %>%
   translate()
+
+
+# 2 モデル定義 -------------------------------------------------------------------
+
+# モデル定義
+bayesian_mod <-
+  bayesian() %>%
+    set_engine("brms") %>%
+    fit(rating ~ treat + period + carry + (1 | subject), 
+        data = inhaler)
+
+# 確認
+bayesian_mod$fit %>% summary()
+
