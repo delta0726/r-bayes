@@ -62,7 +62,7 @@ data_list <-
 
 # MCMCの実行
 mcmc_result <-
-  stan(file = "stan/2-4-1-calc-mean-variance.stan",
+  stan(file = "stan/2-4/2-4-1-calc-mean-variance.stan",
        data = data_list,
        seed = 1,
        chains = 4,
