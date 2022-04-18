@@ -1,23 +1,29 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 2-5-2 MCMCの結果の評価（事後予測チェック）
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/4/12
-# Page      : P134 - P140
-#***************************************************************************************
+# **********************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 2 RとStanによるデータ分析
+# Theme   : 5-2 MCMCの結果の評価（事後予測チェック）
+# Date    : 2022/4/18
+# Page    : P134 - P140
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# **********************************************************************************
 
 
-# ＜テーマ＞
-# - MCMCサンプルの取扱いと事後チェック
-# - {bayesplot}を用いた描画方法
+# ＜概要＞
+# - 事後予測チェックは統計モデルの事後分布と実際の分布がどの程度類似しているかを分析するもの
+#   --- 統計モデルは観測したデータを生み出す確率的な過程を簡潔に記述したもの
+
+
+# ＜メモ＞
+# - R.4.1.3を使用する
+#   --- R.4.0.3の場合は｢2-5-2-poisson-dist.stan｣の実行時にエラーが発生
 
 
 # ＜目次＞
 # 0 準備
-# 1 MCMCの実行
-# 2 MCMCサンプルの構造
-# 3 MCMCサンプルの代表値の計算
+# 1 データセットの準備
+# 2 事後予測チェックのためのMCMCの実行
+# 3 事後予測チェック
+# 4 bayesplotによる事後予測チェック
 
 
 # 0 準備 ---------------------------------------------------------------------
@@ -34,89 +40,116 @@ library(ggfortify)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
+
+# 1 データセットの準備 ---------------------------------------------------------
+
+# ＜ポイント＞
+# - ある小動物の発見個体数のモデル化を行う
+#   --- 個体数はゼロ又は正の整数をとる
+
+
 # データ準備
 # --- 小動物の個数
-animal_num        <- read_csv("book/bayesian_model/csv/2-5-1-animal-num.csv")
+animal_num <- read_csv("csv/2-5-1-animal-num.csv")
 
 # データの確認
 animal_num %>% as_tibble()
+animal_num %>% table()
 animal_num$animal_num %>% hist()
 
 
-# 1 MCMCの実行 ----------------------------------------------------------------
+# 2 事後予測チェックのためのMCMCの実行 --------------------------------------
+
+# ＜ポイント＞
+# - 個体数はゼロ又は正の整数をとるためポアソン分布を想定する
+#   --- 誤ったモデルとして正規分布を想定したモデルも想定する
+# - 今回のstanファイルにはgenerated quantitiesブロックが追加されている
+#   --- 乱数を得るために追加（モデル推定だけなら不要）
+
 
 # データ作成
+# --- rstan用のデータ形式
 data_list <- list(animal_num = animal_num$animal_num, N = nrow(animal_num))
 
-# MCMCの実行
+# モデル構築
 # --- 正規分布仮定のモデル
 mcmc_normal <-
-  stan(file = "book/bayesian_model/stan/2-5-1-normal-dist.stan",
+  stan(file = "stan/2-5/2-5-1-normal-dist.stan",
        data = data_list,
        seed = 1)
 
-# MCMCの実行：ポアソン分布仮定のモデル
+# モデル構築
+# --- ポアソン分布仮定のモデル
 mcmc_poisson <-
-  stan(file = "2-5-2-poisson-dist.stan",
+  stan(file = "stan/2-5/2-5-2-poisson-dist.stan",
        data = data_list,
        seed = 1)
 
-# 参考：推定されたパラメタ
+# 確認
+# ---推定されたパラメータ
 mcmc_normal %>% print(par = c("mu", "sigma", "lp__"))
 mcmc_poisson %>% print(par = c("lambda", "lp__"))
 
 
-# 事後予測チェックの実施 -------------------------------------------------------------
+# 3 事後予測チェック ----------------------------------------------------
+
+# ＜ポイント＞
+# - generated quantitiesブロックで生成したデータが観測データの分布を再現できているかを確認する
+#   --- モデルが適切に表現されているかの確認
 
 
-# 事後予測値のMCMCサンプルの取得
-y_rep_normal <- rstan::extract(mcmc_normal)$pred
-y_rep_poisson <- rstan::extract(mcmc_poisson)$pred
+# MCMCサンプルの取得
+# --- generated quantitiesブロックで生成したデータ
+# --- 行列形式で出力される
+y_rep_normal  <- mcmc_normal %>% rstan::extract() %>% .$pred
+y_rep_poisson <- mcmc_poisson %>% rstan::extract() %>% .$pred
 
-# サンプルサイズ(nrow(animal_num))は200
-# 4000回分のMCMCサンプル
+# 確認
+y_rep_normal %>% class()
+y_rep_normal[1:5, 1:5]
+
+# 行列サイズ
+# --- サンプルサイズ：200
+# --- MCMCサンプル：4000（iter=2000, warmup=1000, 4chain ⇒ (2000-1000)*4 = 4000）
 y_rep_normal %>% dim()
 
-
-# 事後予測値の1回目のMCMCサンプルを抽出
-# 正規分布を仮定したモデル
+# サンプルの抽出
+# --- 事後予測値の1回目のMCMCサンプルを抽出
+# --- 正規分布を仮定したモデル
+# --- ポアソン分布を仮定したモデル
 y_rep_normal[1,]
-# ポアソン分布を仮定したモデル
 y_rep_poisson[1,]
 
-# 参考；観測データの分布と、事後予測分布の比較
-animal_num$animal_num %>% hist() # 観測データの分布
-y_rep_normal[1,] %>% hist()      # 正規分布を仮定した事後予測分布
-y_rep_poisson[1,] %>% hist()     # ポアソン分布を仮定した事後予測分布
-
-# 元データのヒストグラムと、
-# 1~5回分のMCMCサンプルの事後予測値のヒストグラム
-
-# 正規分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_hist(yrep = y_rep_normal[1:5, ])
-
-# ポアソン分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_hist(yrep = y_rep_poisson[1:5, ])
+# ヒストグラムの確認
+# --- 観測データの分布
+# --- 事後予測分布（正規分布を仮定）
+# --- 事後予測分布（ポアソン分布を仮定）
+animal_num$animal_num %>% hist()
+y_rep_normal[1,] %>% hist()
+y_rep_poisson[1,] %>% hist()
 
 
-# ヒストグラムの代わりにカーネル密度推定を利用した結果
+# 4 bayesplotによる事後予測チェック --------------------------------------
 
-# 正規分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_dens(yrep = y_rep_normal[1:10, ])
-
-# ポアソン分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_dens(yrep = y_rep_poisson[1:10, ])
+# ＜ポイント＞
+# - 観測データの分布と事後分布をヒストグラムや密度プロットで比較する
+#   --- {bayesplot}はrstanの結果を可視化するための関数が揃っている
 
 
-# 正規分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_dens_overlay(yrep = y_rep_normal[1:10, ])
+# ヒストグラム
+# --- 正規分布を仮定したモデル
+# --- ポアソン分布を仮定したモデル
+animal_num$animal_num %>% ppc_hist(yrep = y_rep_normal[1:5, ])
+animal_num$animal_num %>% ppc_hist(yrep = y_rep_poisson[1:5, ])
 
-# ポアソン分布を仮定したモデル
-animal_num$animal_num %>%
-  ppc_dens_overlay(yrep = y_rep_poisson[1:10, ])
+# 密度プロット
+# --- 正規分布を仮定したモデル
+# --- ポアソン分布を仮定したモデル
+animal_num$animal_num %>% ppc_dens(yrep = y_rep_normal[1:10, ])
+animal_num$animal_num %>% ppc_dens(yrep = y_rep_poisson[1:10, ])
 
+# 複数の密度プロット
+# --- 正規分布を仮定したモデル
+# --- ポアソン分布を仮定したモデル
+animal_num$animal_num %>% ppc_dens_overlay(yrep = y_rep_normal[1:10, ])
+animal_num$animal_num %>% ppc_dens_overlay(yrep = y_rep_poisson[1:10, ])
