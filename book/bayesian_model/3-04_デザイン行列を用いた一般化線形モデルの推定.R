@@ -1,15 +1,16 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 3-4 デザイン行列を用いた一般化線形モデルの推定
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/4/11
-# Page      : P180- P184
-#***************************************************************************************
+# **********************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 3 一般化線形モデル
+# Theme   : 4 デザイン行列を用いた一般化線形モデルの推定
+# Date    : 2022/4/21
+# Page    : P180- P184
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# **********************************************************************************
 
 
-# ＜テーマ＞
-# - デザイン行列を用いて一般化線形モデルを表現してStanで推定
+# ＜概要＞
+# - デザイン行列を用いて一般化線形モデルを表現してStanで推定する
+#   --- 前回までXはベクトルだったが今回は行列を渡す
 
 
 # ＜目次＞
@@ -31,8 +32,8 @@ library(bayesplot)
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
-# 分析対象のデータ
-file_beer_sales_2 <- read_csv("book/bayesian_model/csv/3-2-1-beer-sales-2.csv")
+# データロード
+file_beer_sales_2 <- read_csv("csv/3-2-1-beer-sales-2.csv")
 
 # データ確認
 file_beer_sales_2 %>% print()
@@ -40,19 +41,30 @@ file_beer_sales_2 %>% print()
 
 # 1 デザイン行列の作成 ------------------------------------------------------------
 
+# ＜ポイント＞
+# - デザイン行列とは一般化線形モデルなどを解くために行列表記したもの
+#   --- モデルを表列表記したもので切片項も含む
+#   --- Rの場合はフォーミュラとmodel.matrix()から作成することができる
+
+
 # formulaの作成
 formula_lm <- formula(sales ~ temperature)
 
 # デザイン行列の作成
 X <- formula_lm %>% model.matrix(file_beer_sales_2)
 
-# formulaとmodel.matrixを使ったデザイン行列
+# 確認
 X %>% head(n = 5)
+X %>% class()
 
 
 # 2 MCMCの実行 -------------------------------------------------------------------
 
-# データ作成
+# ＜ポイント＞
+# - Xのデータを行列(デザイン行列)でインプットする（前回まではベクトル）
+
+
+# Stanデータ作成
 # --- N： サンプルサイズ
 # --- K： デザイン行列の列数（説明変数の数＋１）
 # --- Y： 応答変数
@@ -65,7 +77,7 @@ data_list_design <-
 
 # MCMCの実行
 mcmc_result_design <-
-  stan(file = "book/bayesian_model/stan/3-4-1-lm-design-matrix.stan",
+  stan(file = "stan/3-4/3-4-1-lm-design-matrix.stan",
        data = data_list_design,
        seed = 1)
 
