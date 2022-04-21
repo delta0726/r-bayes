@@ -60,9 +60,9 @@ file_beer_sales_2 %>% print()
 # --- family： 正規分布を使う
 simple_lm_brms <-
   brm(formula = sales ~ temperature,
-      family  = gaussian(link = "identity"),
-      data    = file_beer_sales_2,
-      seed    = 1)
+      family = gaussian(link = "identity"),
+      data = file_beer_sales_2,
+      seed = 1)
 
 # 結果確認
 simple_lm_brms %>% class()
@@ -164,10 +164,9 @@ simple_lm_brms_3 %>% standata()
 make_stancode(
   formula = sales ~ temperature,
   family = gaussian(),
-  data = file_beer_sales_2, 
+  data = file_beer_sales_2,
   prior = c(prior("", class = "Intercept"),
             prior("", class = "sigma")))
-
 
 
 # 5 Stanに渡すデータの作成（make_standata関数） ---------------------------------------
@@ -257,9 +256,9 @@ mcmc_sample %>% as_tibble()
 
 # データ格納
 # --- 推定されたパラメタ別にベクトルで格納
-mcmc_b_Intercept   <- mcmc_sample[,"b_Intercept"]
-mcmc_b_temperature <- mcmc_sample[,"b_temperature"]
-mcmc_sigma         <- mcmc_sample[,"sigma"]
+mcmc_b_Intercept <- mcmc_sample[, "b_Intercept"]
+mcmc_b_temperature <- mcmc_sample[, "b_temperature"]
+mcmc_sigma <- mcmc_sample[, "sigma"]
 
 # 予測作成
 # --- MCMCサンプルごとに予測値が得られる
