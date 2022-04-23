@@ -1,22 +1,25 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 3-9 ロジスティック回帰モデル
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/4/14
-# Page      : P220 - P227
-#***************************************************************************************
+# **********************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 3 一般化線形モデル
+# Theme   : 9 ロジスティック回帰モデル
+# Date    : 2022/4/23
+# Page    : P220 - P227
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# **********************************************************************************
 
 
-# ＜テーマ＞
-# -
+# ＜概要＞
+# - 目的変数がバイナリデータであるロジスティック回帰のbrmsによる実装を確認する
 
 
 # ＜目次＞
 # 0 準備
-# 1 ロジスティック回帰モデルの推定
-# 2 モデルの解釈
-# 3 brmsを用いない実装の方法
+# 1 データ確認
+# 2 ロジスティック回帰モデルの推定
+# 3 推定されたモデルの解釈
+# 4 回帰曲線のプロット
+# 5 rstanを用いた実装
+# 6 試行回数が常に1の場合
 
 
 # 0 準備 ------------------------------------------------------------------------
@@ -33,7 +36,15 @@ rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
 # データロード
-germination_dat <- read_csv("book/bayesian_model/csv/3-9-1-germination.csv")
+germination_dat <- read_csv("csv/3-9-1-germination.csv")
+
+
+# 1 データ確認 -------------------------------------------------------------------
+
+# ＜ポイント＞
+# - ある植物に10粒(size)の種子をまいて何粒が発芽(germination)したかを調査する
+#   --- サンプルごとに栄養素の量(nutrition)を変化させている
+
 
 # データ確認
 germination_dat %>% print()
@@ -49,11 +60,15 @@ germination_dat %>%
     labs(title = "Relationship between shade and sunshine")
 
 
+# 2 ロジスティック回帰モデルの推定 -------------------------------------------------------
 
-# 1 ロジスティック回帰モデルの推定 -------------------------------------------------------
+# ＜ポイント＞
+# - size個の種子のうちgermination個が発芽したことを示すため以下の記法を用いる
+#   --- germination | trials(size)
+
 
 # モデル構築
-# --- family：二項分布を使う
+# --- family：二項分布を使う（binomial）
 # --- prior ：無情報事前分布にする
 glm_binom_brms <-
   brm(germination | trials(size) ~ solar + nutrition,
@@ -62,14 +77,14 @@ glm_binom_brms <-
       seed = 1,
       prior = set_prior("", class = "Intercept"))
 
-# 結果確認
+# 確認
+# --- 収束に問題なし（Rhat = 1）
 glm_binom_brms %>% print()
 
 
-# 2 モデルの解釈 ----------------------------------------------------------------------
+# 3 推定されたモデルの解釈 ----------------------------------------------------------------
 
-# 新データの作成
-# --- 係数の解釈
+# 解釈用のデータ作成
 newdata_1 <-
   data.frame(solar = c("shade", "sunshine", "sunshine"),
              nutrition = c(2, 2, 3),
@@ -82,53 +97,57 @@ newdata_1 %>% print()
 # --- 線形予測子の予測値
 linear_fit <-
   glm_binom_brms %>%
-    fitted(newdata_1, scale = "linear")[,1]
+    fitted(newdata_1, scale = "linear") %>%
+    .[,1]
 
-# ロジスティック関数を適用して、成功確率を計算
+# 成功確率の計算
+# --- ロジスティック関数を適用して計算
 fit <- 1 / (1 + exp(-linear_fit))
 fit
 
-# オッズを計算
+# オッズの計算
 odds_1 <- fit[1] / (1 - fit[1])
 odds_2 <- fit[2] / (1 - fit[2])
 odds_3 <- fit[3] / (1 - fit[3])
 
 # モデルの係数を取得
-coef <- fixef(glm_binom_brms)[,1]
+coef <- glm_binom_brms %>% fixef() %>% .[,1]
 coef
 
-# solarがshadeからsunshineに変わった時のオッズ比
+# データ検証
+# --- solarがshadeからsunshineに変わった時のオッズ比
 odds_2 / odds_1
-exp(coef["solarsunshine"])
+coef["solarsunshine"] %>% exp()
 
-# nutritionが1から2に変わった時のオッズ比
+# データ検証
+# --- nutritionが1から2に変わった時のオッズ比
 odds_3 / odds_2
-exp(coef["nutrition"])
+coef["nutrition"] %>% exp()
 
 
-# 95%ベイズ信用区間付きの回帰曲線
-eff <- marginal_effects(glm_binom_brms, 
-                        effects = "nutrition:solar")
+# 4 回帰曲線のプロット ------------------------------------------------
 
-plot(eff, points = TRUE)
+# 回帰曲線のプロット
+# --- 95%ベイズ信用区間付きの回帰曲線
+glm_binom_brms %>%
+  marginal_effects(effects = "nutrition:solar") %>%
+  plot(points = TRUE)
 
-
-
-# 参考：事後分布の図示
-plot(glm_binom_brms, pars = "^b_")
-
-# 参考：係数の信頼区間
-stanplot(glm_binom_brms, type = "intervals", pars = "^b_")
+# その他のプロット
+# --- 事後分布の図示
+# --- 係数の信頼区間
+glm_binom_brms %>% plot(pars = "^b_")
+glm_binom_brms %>% stanplot(type = "intervals", pars = "^b_")
 
 # 参考：95%ベイズ予測区間付きのグラフ
 set.seed(1)
-eff_pre <- marginal_effects(glm_binom_brms, 
-                            method = "predict",
-                            effects = "nutrition:solar")
-plot(eff_pre, points = TRUE)
+glm_binom_brms %>%
+  marginal_effects(method = "predict",
+                   effects = "nutrition:solar") %>%
+  plot(points = TRUE)
 
 
-# 3 brmsを用いない実装の方法 ----------------------------------------------------------
+# 5 rstanを用いた実装 ----------------------------------------------------------
 
 # ダミー変数の作成
 solar_dummy <- as.numeric(germination_dat$solar == "sunshine")
@@ -141,27 +160,27 @@ data_list_1 <-
        solar = solar_dummy,
        nutrition = germination_dat$nutrition)
 
-# 確認
-data_list_1 %>% print()
-
-# MCMC実行
+# モデル構築
 glm_binom_stan <-
-  stan(file = "book/bayesian_model/stan/3-9-1-glm-binom-1.stan",
+  stan(file = "stan/3-9/3-9-1-glm-binom-1.stan",
        data = data_list_1,
        seed = 1)
 
-# 結果確認
+# 確認
 glm_binom_stan %>% print(probs = c(0.025, 0.5, 0.975))
 
 
+# 6 試行回数が常に1の場合 ----------------------------------------------------------
 
-# 補足：試行回数が常に1の場合 ----------------------------------------------------------
+# ＜ポイント＞
+# - 試行回数が1の場合はベルヌーイ分布の方が適切
+#   --- 以下は実装イメージ
 
-# 参考：0/1データの場合（このコードは実行できません）
+# ベルヌーイ分布
 # glm_bernoulli_brms <- brm(
-#   formula = 0/1データ ~ 説明変数,              # modelの構造を指定
-#   family = bernoulli(),                        # ベルヌーイ分布を使う
-#   data = データ,                               # データ
-#   seed = 1,                                    # 乱数の種
-#   prior = c(set_prior("", class = "Intercept"))# 無情報事前分布にする
+#   formula = 0/1データ ~ 説明変数,
+#   family = bernoulli(),
+#   data = データ,
+#   seed = 1,
+#   prior = c(set_prior("", class = "Intercept"))
 # )
