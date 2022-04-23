@@ -1,28 +1,29 @@
-#***************************************************************************************
-# Title     : ベイズ統計モデリングによるデータ分析入門
-# Chapter   : 3-10 交互作用
-# Objective : TODO
-# Created by: Owner
-# Created on: 2021/4/11
-# Page      : P228 - P242
-#***************************************************************************************
+# **********************************************************************************
+# Title   : ベイズ統計モデリングによるデータ分析入門
+# Chapter : 3 一般化線形モデル
+# Theme   : 10 交互作用
+# Date    : 2022/4/23
+# Page    : P228 - P242
+# URL     : https://logics-of-blue.com/r-stan-bayesian-model-intro-book-support/
+# **********************************************************************************
 
 
-# ＜テーマ＞
-# -
+# ＜概要＞
+# - 線形予測子に説明変数同士の交互作用を導入する
 
 
 # ＜目次＞
 # 0 準備
-# 1 モデル構築（カテゴリ×カテゴリ）
-# 2 係数の解釈（カテゴリ×カテゴリ）
-# 3 モデルの図示（カテゴリ×カテゴリ）
-# 4 モデル構築（カテゴリ×数量）
-# 5 係数の解釈（カテゴリ×数量）
-# 6 モデルの図示（カテゴリ×数量）
-# 7 モデル構築（数量×数量）
-# 8 係数の解釈（数量×数量）
-# 9 モデルの図示（数量×数量）
+# 1 データ確認
+# 2-1 モデル構築（カテゴリ×カテゴリ）
+# 2-2 係数の解釈（カテゴリ×カテゴリ）
+# 2-3 モデルの図示（カテゴリ×カテゴリ）
+# 3-1 モデル構築（カテゴリ×数量）
+# 3-2 係数の解釈（カテゴリ×数量）
+# 3-3 モデルの図示（カテゴリ×数量）
+# 4-1 モデル構築（数量×数量）
+# 4-2 係数の解釈（数量×数量）
+# 4-3 モデルの図示（数量×数量）
 
 
 # 0 準備 -------------------------------------------------------------------------
@@ -39,17 +40,32 @@ rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
 
 # データロード
-interaction_1 <- read_csv("book/bayesian_model/csv/3-10-1-interaction-1.csv")
-interaction_2 <- read_csv("book/bayesian_model/csv/3-10-2-interaction-2.csv")
-interaction_3 <- read_csv("book/bayesian_model/csv/3-10-3-interaction-3.csv")
+interaction_1 <- read_csv("csv/3-10-1-interaction-1.csv")
+interaction_2 <- read_csv("csv/3-10-2-interaction-2.csv")
+interaction_3 <- read_csv("csv/3-10-3-interaction-3.csv")
+
+
+# 1 データ確認 ---------------------------------------------------------------------
 
 # データ確認
+# --- Y ：数値データ
+# --- X ：カテゴリカルデータ × カテゴリカルデータ
 interaction_1 %>% print()
-interaction_1 %>% select(publicity, bargen) %>% map(table)
+interaction_1 %>%
+  select(publicity, bargen) %>%
+  map(table)
 
+# データ確認
+# --- Y ：数値データ
+# --- X ：カテゴリカルデータ × 数値データ
 interaction_2 %>% print()
-interaction_2 %>% select(publicity) %>% map(table)
+interaction_2 %>%
+  select(publicity) %>%
+  map(table)
 
+# データ確認
+# --- Y ：数値データ
+# --- X ：数値データ × 数値データ
 interaction_3 %>% print()
 interaction_3 %>% select(clerk) %>% map(table)
 
@@ -59,13 +75,19 @@ interaction_2 %>% summary()
 interaction_3 %>% summary()
 
 
-# 1 モデル構築（カテゴリ×カテゴリ）-----------------------------------------------------
+# 2-1 モデル構築（カテゴリ×カテゴリ）-----------------------------------------------
 
-# デザイン行列の作成
-model.matrix(sales ~ publicity * bargen, interaction_1)
+# ＜ポイント＞
+# - 交互効果は｢*｣や｢:｣の演算子を使って定義することができる
+# - モデル定義の際は説明変数がカテゴリカルデータであることは意識しなくてもよい
+
+
+# デザイン行列
+# --- 線形予測子のイメージ確認
+model.matrix(sales ~ publicity * bargen, interaction_1) %>% head()
 
 # モデル構築1
-# --- 通常モデル
+# --- フォーミュラを｢*｣でつなぐと交互作用を自動的に定義してくれる
 interaction_brms_1 <-
   brm(formula = sales ~ publicity * bargen,
       family = gaussian(link = "identity"),
@@ -75,7 +97,8 @@ interaction_brms_1 <-
                 set_prior("", class = "sigma")))
 
 # モデル構築2
-# --- 交互作用ありモデル
+# --- 自分で交互効果を定義する際は対象変数を｢:｣でつなぐ
+# --- 交互変数を出力するパターンをコントロールすることができる
 interaction_brms_1_2 <-
   brm(formula = sales ~ publicity + bargen + publicity:bargen,
       family = gaussian(link = "identity"),
@@ -93,26 +116,32 @@ interaction_brms_1 %>% plot()
 interaction_brms_1_2 %>% plot()
 
 
-# 2 係数の解釈（カテゴリ×カテゴリ）-------------------------------------------------------
+# 2-2 係数の解釈（カテゴリ×カテゴリ）-------------------------------------------------------
 
-# 交互作用の効果の確認
-# 説明変数を作る
+# ＜ポイント＞
+# - カテゴリカルデータの各パターンを網羅したデータセットを作成して予測値を確認する
+
+
+# 解釈用データの作成
+# --- 各パターンを網羅したデータセットを作成
 newdata_1 <-
-  data.frame(publicity = rep(c("not", "to_implement"),2),
-             bargen = rep(c("not", "to_implement"),each = 2))
+  data.frame(publicity = rep(c("not", "to_implement"), 2),
+             bargen = rep(c("not", "to_implement"), each = 2))
 
-# 結果確認
+# 確認
 newdata_1 %>% print()
 
 # 予測
-round(fitted(interaction_brms_1, newdata_1), 2)
-
-# プロット作成
-# --- 事後分布とトレースプロット
-interaction_brms_1 %>% plot()
+interaction_brms_1 %>%
+  fitted(newdata_1) %>%
+  round(2)
 
 
-# 3 モデルの図示（カテゴリ×カテゴリ）--------------------------------------------------
+# 2-3 モデルの図示（カテゴリ×カテゴリ）--------------------------------------------------
+
+# ＜ポイント＞
+# - カテゴリカルデータなので散布図はカテゴリごとに作成される
+
 
 # モデルの図示
 interaction_brms_1 %>%
@@ -120,12 +149,18 @@ interaction_brms_1 %>%
   plot(points = T)
 
 
-# 4 モデル構築（カテゴリ×数量）-------------------------------------------------------
+# 3-1 モデル構築（カテゴリ×数量）-------------------------------------------------------
+
+# ＜ポイント＞
+# - 数量データとカテゴリカルデータを含むデータセットを使用
+
 
 # デザイン行列の作成
-model.matrix(sales ~ publicity * temperature, interaction_2)
+# --- 線形予測子のイメージ確認
+model.matrix(sales ~ publicity * temperature, interaction_2) %>% head()
 
-# モデル化
+# モデル構築
+# --- フォーミュラを｢*｣でつなぐことで交互効果を導入
 interaction_brms_2 <-
   brm(formula = sales ~ publicity * temperature,
       family = gaussian(link = "identity"),
@@ -142,22 +177,28 @@ interaction_brms_2 %>% print()
 interaction_brms_2 %>% plot()
 
 
-# 5 係数の解釈（カテゴリ×数量）------------------------------------------------------
+# 3-2 係数の解釈（カテゴリ×数量）------------------------------------------------------
 
-# 交互作用の効果の確認
-# 説明変数を作る
+# 解釈用データの作成
+# --- 各パターンを網羅したデータセットを作成
 newdata_2 <-
-  data.frame(publicity   = rep(c("not", "to_implement"), each = 2),
-             temperature = c(0,10,0,10))
+  data.frame(publicity = rep(c("not", "to_implement"), each = 2),
+             temperature = c(0, 10, 0, 10))
 
 # 確認
 newdata_2 %>% print()
 
 # 予測
-round(fitted(interaction_brms_2, newdata_2), 2)
+interaction_brms_2 %>%
+  fitted(newdata_2) %>%
+  round(2)
 
 
-# 6 モデルの図示（カテゴリ×数量）----------------------------------------------------
+# 3-3 モデルの図示（カテゴリ×数量）--------------------------------------------------
+
+# ＜ポイント＞
+# - カテゴリごとに回帰直線と信頼区間を表示することで効果の違いを明確にする
+
 
 # 回帰直線の図示
 interaction_brms_2 %>%
@@ -165,16 +206,23 @@ interaction_brms_2 %>%
   plot(points = T)
 
 
-# 7 モデル構築（数量×数量）-------------------------------------------------------------
+# 4-1 モデル構築（数量×数量）-------------------------------------------------------------
+
+# ＜ポイント＞
+# - 数値データのうち店員数(clerk)は離散値なのでファクターとして扱う
+#   --- 数値データを分位化するなどして離散化しておくと効果を認識しやすくなる
+
 
 # プロット作成
+# --- 店員数(clerk)が多いほど同じ条件での売上高は上昇していることが分かる
 interaction_3 %>%
-  ggplot(aes(x = product, y = sales, color = factor(clerk)))+
-    geom_point()
-
+  mutate(clerk = factor(clerk)) %>%
+  ggplot(aes(x = product, y = sales, color = clerk)) +
+  facet_wrap(~clerk) +
+  geom_point()
 
 # デザイン行列の作成
-model.matrix(sales ~ product * clerk, interaction_3)
+model.matrix(sales ~ product * clerk, interaction_3) %>% head()
 
 # モデル化
 interaction_brms_3 <-
@@ -193,34 +241,40 @@ interaction_brms_3 %>% print()
 interaction_brms_3 %>% plot()
 
 
-# 8 係数の解釈（数量×数量） ---------------------------------------------------------
+# 4-2 係数の解釈（数量×数量） ---------------------------------------------------------
 
-# 交互作用の効果の確認
-# 説明変数を作る
+# 解釈用データの作成
+# --- 各パターンを網羅したデータセットを作成
 newdata_3 <-
-  data.frame(product = c(0,10,0,10),
-              clerk   = c(0,0,10,10))
+  data.frame(product = c(0, 10, 0, 10),
+             clerk = c(0, 0, 10, 10))
 
 # 確認
 newdata_3 %>% print()
 
 # 予測
-round(fitted(interaction_brms_3, newdata_3), 2)
+interaction_brms_3 %>%
+  fitted(newdata_3) %>%
+  round(2)
 
 
-# 9 モデルの図示（数量×数量）---------------------------------------------------------
+# 4-3 モデルの図示（数量×数量）---------------------------------------------------------
+
+# ＜ポイント＞
+# - 店員数(clerk)をカテゴリとして扱ったことで店員数ごとの効果を測定することができた
+
 
 # 回帰直線の図示
 # 1つのグラフに回帰直線をまとめて描画する
 int_conditions <- list(
-  clerk = setNames(1:9, paste("clerk=", 1:9, sep=""))
+  clerk = setNames(1:9, str_c("clerk=", 1:9, sep = ""))
 )
 int_conditions
 
-eff_3 <- marginal_effects(interaction_brms_3,
-                          effects = "product:clerk",
-                          int_conditions = int_conditions)
-plot(eff_3, points = TRUE)
+interaction_brms_3 %>%
+  marginal_effects(effects = "product:clerk",
+                   int_conditions = int_conditions) %>%
+  plot(points = TRUE)
 
 
 # 回帰直線の図示
@@ -228,9 +282,7 @@ plot(eff_3, points = TRUE)
 conditions <- data.frame(clerk = 1:9)
 conditions
 
-eff_4 <- marginal_effects(interaction_brms_3,
-                          effects = "product",
-                          conditions = conditions)
-plot(eff_4, points = FALSE)
-
-
+interaction_brms_3 %>%
+  marginal_effects(effects = "product",
+                   conditions = conditions) %>%
+  plot(points = FALSE)
