@@ -1,7 +1,7 @@
 # ***********************************************************************************************
 # Title   : StanとRでベイズ統計モデリング
 # Theme   : 2 Stan入門編
-# Chapter : StanとRStanをはじめよう（単回帰_lm）
+# Chapter : 4-4 StanとRStanをはじめよう（単回帰_lm）
 # Date    : 2022/05/06
 # Page    : P34 - P38
 # URL     : https://github.com/MatsuuraKentaro/RStanBook
